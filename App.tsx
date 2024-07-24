@@ -9,9 +9,11 @@ import {
   View,
   FlatList,
   ActivityIndicator,
-  Image
+  Image,
+  TextInput,
 } from 'react-native';
 import axios from 'axios';
+import {Picker} from '@react-native-picker/picker';
 
 interface Character {
   id: number;
@@ -28,12 +30,16 @@ interface Character {
 
 const App = () => {
   const [data, setData] = useState<Character[]>([]);
+  const [filteredData, setFilteredData] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<string>('');
+  const [location, setLocation] = useState<string>('');
 
   useEffect(() => {
     axios.get('https://rickandmortyapi.com/api/character')
       .then(response => {
         setData(response.data.results);
+        setFilteredData(response.data.results);
         setLoading(false);
       })
       .catch(error => {
@@ -41,6 +47,21 @@ const App = () => {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    filterData();
+  }, [status, location]);
+
+  const filterData = () => {
+    let filtered = data;
+    if (status) {
+      filtered = filtered.filter(character => character.status.toLowerCase() === status.toLowerCase());
+    }
+    if (location) {
+      filtered = filtered.filter(character => character.location.name.toLowerCase().includes(location.toLowerCase()));
+    }
+    setFilteredData(filtered);
+  };
 
   if (loading) {
     return (
@@ -65,15 +86,54 @@ const App = () => {
   );
 
   return (
-    <FlatList
-      data={data}
-      renderItem={renderItem}
-      keyExtractor={item => item.id.toString()}
-    />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.filterContainer}>
+        <Picker
+          selectedValue={status}
+          style={styles.picker}
+          onValueChange={(itemValue: string) => setStatus(itemValue)}>
+          <Picker.Item label="All" value="" />
+          <Picker.Item label="Alive" value="Alive" />
+          <Picker.Item label="Dead" value="Dead" />
+          <Picker.Item label="Unknown" value="unknown" />
+        </Picker>
+        <TextInput
+          style={styles.input}
+          placeholder="Last Known Location"
+          value={location}
+          onChangeText={(text) => setLocation(text)}
+        />
+      </View>
+      <FlatList
+        data={filteredData}
+        renderItem={renderItem}
+        keyExtractor={item => item.id.toString()}
+      />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  picker: {
+    height: 50,
+    width: 150,
+  },
+  input: {
+    height: 50,
+    borderColor: 'gray',
+    borderWidth: 1,
+    padding: 10,
+    flex: 1,
+    marginLeft: 10,
+  },
   indicator: {
     flex: 1,
     justifyContent: "center",
